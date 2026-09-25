@@ -1,0 +1,84 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Job throughput (completed / min)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT toStartOfMinute(event_time) AS time, countIf(event_type='JOB_COMPLETED') AS completed FROM chronos.chronos_events WHERE $__timeFilter(event_time) GROUP BY time ORDER BY time",
+          "format": 1,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "cpm" },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Failures / timeouts / retries",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "rawSql": "SELECT toStartOfMinute(event_time) AS time, countIf(event_type='JOB_FAILED') AS failed, countIf(event_type='JOB_TIMEOUT') AS timeout, countIf(event_type='JOB_RETRY_SCHEDULED') AS retry FROM chronos.chronos_events WHERE $__timeFilter(event_time) GROUP BY time ORDER BY time",
+          "format": 1,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "P95 execution latency (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "rawSql": "SELECT toStartOfMinute(event_time) AS time, quantileTDigest(0.95)(toFloat64(JSONExtractUInt(payload,'duration_ms'))) AS p95 FROM chronos.chronos_events WHERE event_type='JOB_COMPLETED' AND $__timeFilter(event_time) AND JSONExtractUInt(payload,'duration_ms')>0 GROUP BY time ORDER BY time",
+          "format": 1,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+    },
+    {
+      "title": "Events by type",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "rawSql": "SELECT event_type, count() AS c FROM chronos.chronos_events WHERE $__timeFilter(event_time) GROUP BY event_type ORDER BY c DESC",
+          "format": 1,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Worker completed share",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "rawSql": "SELECT worker_id, countIf(event_type='JOB_COMPLETED') AS completed FROM chronos.chronos_events WHERE $__timeFilter(event_time) AND worker_id!='' GROUP BY worker_id ORDER BY completed DESC LIMIT 20",
+          "format": 1,
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["chronos"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "utc",
+  "title": "Chronos Overview",
+  "uid": "chronos-overview",
+  "version": 1
+}

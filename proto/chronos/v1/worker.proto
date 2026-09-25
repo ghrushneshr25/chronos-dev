@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package chronos.v1;
+
+option go_package = "github.com/ghrushneshr25/chronos-dev/proto/chronos/v1;chronosv1";
+
+// WorkerService is served by each worker. The scheduler pushes job assignments.
+service WorkerService {
+  rpc ExecuteJob(ExecuteJobRequest) returns (ExecuteJobResponse);
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+// SchedulerService is served by the scheduler. Workers register and heartbeat.
+service SchedulerService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc Deregister(DeregisterRequest) returns (DeregisterResponse);
+  rpc ReportResult(ReportResultRequest) returns (ReportResultResponse);
+}
+
+message ExecuteJobRequest {
+  string job_id = 1;
+  string execution_id = 2;
+  string name = 3;
+  string type = 4; // builtin | webhook
+  bytes payload = 5;
+  int32 attempt = 6;
+  int64 timeout_ms = 7;
+  string trace_id = 8;
+  map<string, string> metadata = 9;
+}
+
+message ExecuteJobResponse {
+  bool accepted = 1;
+  string message = 2;
+}
+
+message CancelJobRequest {
+  string job_id = 1;
+  string execution_id = 2;
+}
+
+message CancelJobResponse {
+  bool cancelled = 1;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string worker_id = 1;
+  int32 capacity = 2;
+  int32 active_jobs = 3;
+  bool healthy = 4;
+}
+
+message RegisterRequest {
+  string worker_id = 1;
+  string address = 2; // host:port for WorkerService
+  int32 capacity = 3;
+  bool cap_builtin = 4;
+  bool cap_webhook = 5;
+  map<string, string> labels = 6;
+  string token = 7;
+}
+
+message RegisterResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  int32 active_jobs = 2;
+  int32 capacity = 3;
+  string token = 4;
+}
+
+message HeartbeatResponse {
+  bool ok = 1;
+  repeated string cancel_job_ids = 2;
+}
+
+message DeregisterRequest {
+  string worker_id = 1;
+  string token = 2;
+}
+
+message DeregisterResponse {
+  bool ok = 1;
+}
+
+message ReportResultRequest {
+  string job_id = 1;
+  string execution_id = 2;
+  string worker_id = 3;
+  int32 attempt = 4;
+  bool success = 5;
+  bytes output = 6;
+  string error = 7;
+  bool retryable = 8;
+  int64 duration_ms = 9;
+  string token = 10;
+  // reason: success | failed | timeout | cancelled
+  string reason = 11;
+}
+
+message ReportResultResponse {
+  bool ok = 1;
+}
